@@ -12,7 +12,6 @@ config = {
     'client_id': os.getenv('GOOGLE_ADS_CLIENT_ID'),
     'client_secret': os.getenv('GOOGLE_ADS_CLIENT_SECRET'),
     'refresh_token': os.getenv('GOOGLE_ADS_REFRESH_TOKEN'),
-    'login_customer_id': os.getenv('GOOGLE_ADS_LOGIN_CUSTOMER_ID'),
     'use_proto_plus': True,
     'logging': {
         'version': 1,
@@ -37,6 +36,10 @@ config = {
         }
     }
 }
+
+# Add login_customer_id only if provided (for MCC accounts)
+if os.getenv('GOOGLE_ADS_LOGIN_CUSTOMER_ID'):
+    config['login_customer_id'] = os.getenv('GOOGLE_ADS_LOGIN_CUSTOMER_ID')
 
 # Write to google-ads.yaml
 with open('google-ads.yaml', 'w') as f:
