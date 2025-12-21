@@ -4,6 +4,7 @@ Health Router - Health checks and system status
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import text  # ✅ AGGIUNGI QUESTO IMPORT
 from datetime import datetime, timedelta
 
 from database.database import get_db
@@ -26,8 +27,8 @@ async def health_check(db: Session = Depends(get_db)):
     - Recent activity metrics
     """
     try:
-        # Test database connection
-        db.execute("SELECT 1")
+        # Test database connection ✅ USA text()
+        db.execute(text("SELECT 1"))
         
         # Count recent metrics (last 24h)
         cutoff = datetime.now() - timedelta(hours=24)
