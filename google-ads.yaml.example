@@ -1,0 +1,25 @@
+# Google Ads API Configuration
+# Copia questo file in google-ads.yaml e inserisci le tue credenziali
+
+developer_token: "INSERT_DEVELOPER_TOKEN_HERE"
+client_id: "INSERT_CLIENT_ID_HERE"
+client_secret: "INSERT_CLIENT_SECRET_HERE"
+refresh_token: "INSERT_REFRESH_TOKEN_HERE"
+login_customer_id: "INSERT_LOGIN_CUSTOMER_ID_HERE"
+
+# Opzionale: per logging
+logging:
+  version: 1
+  disable_existing_loggers: False
+  formatters:
+    default_fmt:
+      format: '[%(asctime)s - %(levelname)s] %(message).5000s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
+  handlers:
+    default_handler:
+      class: logging.StreamHandler
+      formatter: default_fmt
+  loggers:
+    '':
+      handlers: [default_handler]
+      level: INFO
