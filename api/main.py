@@ -36,20 +36,22 @@ def run_monitoring_cycle():
     try:
         logger.info("🔄 Starting monitoring cycle...")
         
-        # Initialize agents
+        # Initialize monitor
         monitor = CampaignMonitor()
-        analyzer = CampaignAnalyzer()
         
-        # Run monitoring
-        monitor.monitor_all_campaigns()
-        logger.info("✅ Monitoring completed")
+        # Run monitoring (this saves to database automatically)
+        result = monitor.run()
+        
+        logger.info(f"✅ Monitoring completed: {result['campaigns_count']} campaigns, {result['alerts_count']} alerts")
         
         # Optional: Run analysis
+        # analyzer = CampaignAnalyzer()
         # analyzer.analyze_all_campaigns()
-        # logger.info("✅ Analysis completed")
         
     except Exception as e:
         logger.error(f"❌ Error in monitoring cycle: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @asynccontextmanager
