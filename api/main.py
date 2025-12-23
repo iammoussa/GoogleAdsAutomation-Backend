@@ -46,8 +46,11 @@ def run_monitoring_cycle():
         
         # Run analysis (generates AI recommendations)
         logger.info("🤖 Starting AI analysis...")
-        analysis_result = analyzer.analyze_all_campaigns()
-        logger.info(f"✅ Analysis completed: {analysis_result.get('optimizations_generated', 0)} recommendations generated")
+        analysis_results = analyzer.analyze_all_campaigns()
+        
+        # Count optimizations generated
+        total_optimizations = sum(len(r.get('proposed_actions', [])) for r in analysis_results)
+        logger.info(f"✅ Analysis completed: {total_optimizations} recommendations generated")
         
     except Exception as e:
         logger.error(f"❌ Error in monitoring cycle: {e}")
