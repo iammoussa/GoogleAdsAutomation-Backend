@@ -1,5 +1,5 @@
 """
-Campaigns Router - Get campaign data with optional extended metrics
+Campaigns Router - Get campaign data with user authentication
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from database.database import get_db
-from agents.monitor import CampaignMonitor
+from agents.monitor import create_monitor_for_user
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,6 +18,10 @@ router = APIRouter()
 
 @router.get("")
 async def get_campaigns(
+    user_id: str = Query(
+        ...,
+        description="User ID from authentication"
+    ),
     live: bool = Query(
         default=True, 
         description="Fetch live data from Google Ads API"
@@ -32,14 +36,15 @@ async def get_campaigns(
     ),
     extended_fields: Optional[List[str]] = Query(
         default=None,
-        description="Extended metric fields to fetch (e.g., conversion_rate, viewable_impressions)"
+        description="Extended metric fields to fetch"
     ),
     db: Session = Depends(get_db)
 ):
     """
-    Get campaigns with metrics
+    Get campaigns with metrics for authenticated user
     
     **Query Parameters:**
+    - `user_id`: User ID (required)
     - `live`: Fetch live data from Google Ads API (default: true)
     - `start_date`: Filter by start date (YYYY-MM-DD)
     - `end_date`: Filter by end date (YYYY-MM-DD)
@@ -63,9 +68,11 @@ async def get_campaigns(
     - List of campaigns with requested metrics
     """
     try:
-        logger.info(f"🔴 Fetching {'LIVE' if live else 'CACHED'} campaign data...")
+        logger.info(f"Fetching {'LIVE' if live else 'CACHED'} campaign data for user {user_id}...")
         
-        monitor = CampaignMonitor()
+        # Create monitor with user context
+        monitor = create_monitor_for_user(user_id=user_id)
+        
         campaigns_data = monitor.get_campaigns_metrics(
             start_date=start_date,
             end_date=end_date,
@@ -100,7 +107,7 @@ async def get_campaigns(
             
             campaigns.append(campaign_response)
         
-        logger.success(f"✅ Fetched {len(campaigns)} campaigns")
+        logger.info(f"Fetched {len(campaigns)} campaigns")
         
         return {
             'campaigns': campaigns,
@@ -115,7 +122,7 @@ async def get_campaigns(
         }
         
     except Exception as e:
-        logger.error(f"❌ Error getting campaigns: {e}")
+        logger.error(f"Error getting campaigns: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

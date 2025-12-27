@@ -1,5 +1,5 @@
 """
-Stats Router - Dashboard statistics and analytics
+Stats Router - Dashboard statistics and analytics with user authentication
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from database.database import get_db
-from agents.monitor import CampaignMonitor
+from agents.monitor import create_monitor_for_user
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,6 +18,10 @@ router = APIRouter()
 
 @router.get("/dashboard")
 async def get_dashboard_stats(
+    user_id: str = Query(
+        ...,
+        description="User ID from authentication"
+    ),
     start_date: Optional[str] = Query(
         default=None, 
         description="Start date (YYYY-MM-DD)"
@@ -32,6 +36,7 @@ async def get_dashboard_stats(
     Get dashboard statistics with period-over-period comparison
     
     **Query Parameters:**
+    - `user_id`: User ID (required)
     - `start_date`: Start date for current period (YYYY-MM-DD)
     - `end_date`: End date for current period (YYYY-MM-DD)
     
@@ -41,7 +46,7 @@ async def get_dashboard_stats(
     - Period details
     """
     try:
-        logger.info(f"📊 Fetching dashboard stats from {start_date} to {end_date}")
+        logger.info(f"Fetching dashboard stats from {start_date} to {end_date} for user {user_id}")
         
         # Parse dates or use defaults
         if start_date and end_date:
@@ -59,11 +64,11 @@ async def get_dashboard_stats(
         previous_end = current_start - timedelta(days=1)
         previous_start = previous_end - timedelta(days=duration_days - 1)
         
-        logger.info(f"📅 Current:  {current_start.date()} to {current_end.date()} ({duration_days} days)")
-        logger.info(f"📅 Previous: {previous_start.date()} to {previous_end.date()} ({duration_days} days)")
+        logger.info(f"Current:  {current_start.date()} to {current_end.date()} ({duration_days} days)")
+        logger.info(f"Previous: {previous_start.date()} to {previous_end.date()} ({duration_days} days)")
         
-        # Fetch live data from Google Ads
-        monitor = CampaignMonitor()
+        # Create monitor with user context
+        monitor = create_monitor_for_user(user_id=user_id)
         
         # Get current period data
         current_campaigns = monitor.get_campaigns_metrics(
@@ -95,9 +100,9 @@ async def get_dashboard_stats(
         cost_per_conv_change = ((current_cost_per_conv - prev_cost_per_conv) / prev_cost_per_conv * 100) if prev_cost_per_conv > 0 else 0
         value_change = ((current_conv_value - prev_conv_value) / prev_conv_value * 100) if prev_conv_value > 0 else 0
         
-        logger.success(f"✅ Current: €{current_spend:.2f}, {int(current_conversions)} conv")
-        logger.success(f"✅ Previous: €{prev_spend:.2f}, {int(prev_conversions)} conv")
-        logger.success(f"✅ Changes: spend {spend_change:+.1f}%, conv {conversions_change:+.1f}%")
+        logger.info(f"Current: EUR{current_spend:.2f}, {int(current_conversions)} conv")
+        logger.info(f"Previous: EUR{prev_spend:.2f}, {int(prev_conversions)} conv")
+        logger.info(f"Changes: spend {spend_change:+.1f}%, conv {conversions_change:+.1f}%")
         
         return {
             'spend': round(current_spend, 2),
@@ -122,5 +127,5 @@ async def get_dashboard_stats(
         }
         
     except Exception as e:
-        logger.error(f"❌ Error getting dashboard stats: {e}")
+        logger.error(f"Error getting dashboard stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))

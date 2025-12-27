@@ -16,12 +16,17 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://localhost/google_ads_automation"
     
     # ================================
-    # GOOGLE ADS API - Credenziali OAuth
+    # SUPABASE (per token dinamici)
+    # ================================
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
+    
+    # ================================
+    # GOOGLE ADS API - OAuth2 Credentials
     # ================================
     GOOGLE_ADS_DEVELOPER_TOKEN: Optional[str] = None
     GOOGLE_ADS_CLIENT_ID: Optional[str] = None
     GOOGLE_ADS_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_ADS_REFRESH_TOKEN: Optional[str] = None
     GOOGLE_ADS_CUSTOMER_ID: str = ""
     
     # ================================
@@ -80,8 +85,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-        # Permetti extra fields (per eventuali variabili future)
-        extra = "ignore"  # Ignora variabili extra invece di errore
+        extra = "ignore"
     
     def validate_ai_provider(self) -> bool:
         """Valida che il provider AI sia configurato correttamente"""
@@ -96,31 +100,40 @@ class Settings(BaseSettings):
             return True
         
         elif self.AI_PROVIDER.lower() == 'openai':
-            if not self.ANTHROPIC_API_KEY:
+            if not self.OPENAI_API_KEY:
                 raise ValueError("OPENAI_API_KEY non configurata in .env")
             return True
         
         else:
-            raise ValueError(f"AI_PROVIDER '{self.AI_PROVIDER}' non valido. Usa 'gemini' o 'claude'")
+            raise ValueError(f"AI_PROVIDER '{self.AI_PROVIDER}' non valido. Usa 'gemini', 'claude' o 'openai'")
     
     def validate_google_ads(self) -> bool:
-        """Valida configurazione Google Ads"""
-        if not self.GOOGLE_ADS_CUSTOMER_ID:
-            raise ValueError("GOOGLE_ADS_CUSTOMER_ID non configurato")
-        
-        # Verifica credenziali OAuth (necessarie per Google Ads API)
+        """Valida configurazione Google Ads OAuth2"""
         missing = []
+        
         if not self.GOOGLE_ADS_DEVELOPER_TOKEN:
             missing.append("GOOGLE_ADS_DEVELOPER_TOKEN")
         if not self.GOOGLE_ADS_CLIENT_ID:
             missing.append("GOOGLE_ADS_CLIENT_ID")
         if not self.GOOGLE_ADS_CLIENT_SECRET:
             missing.append("GOOGLE_ADS_CLIENT_SECRET")
-        if not self.GOOGLE_ADS_REFRESH_TOKEN:
-            missing.append("GOOGLE_ADS_REFRESH_TOKEN")
         
         if missing:
-            raise ValueError(f"Credenziali Google Ads mancanti: {', '.join(missing)}")
+            raise ValueError(f"Credenziali Google Ads OAuth2 mancanti: {', '.join(missing)}")
+        
+        return True
+    
+    def validate_supabase(self) -> bool:
+        """Valida configurazione Supabase"""
+        missing = []
+        
+        if not self.SUPABASE_URL:
+            missing.append("SUPABASE_URL")
+        if not self.SUPABASE_SERVICE_KEY:
+            missing.append("SUPABASE_SERVICE_KEY")
+        
+        if missing:
+            raise ValueError(f"Credenziali Supabase mancanti: {', '.join(missing)}")
         
         return True
     
@@ -176,113 +189,119 @@ settings = Settings()
 
 if __name__ == "__main__":
     print("="*60)
-    print("🔧 CONFIGURAZIONE SISTEMA")
+    print("CONFIGURAZIONE SISTEMA")
     print("="*60)
     print()
     
     # Database
-    print("📊 DATABASE")
+    print("DATABASE")
     print(f"   URL: {settings.DATABASE_URL}")
     print()
     
-    # Google Ads
-    print("📢 GOOGLE ADS")
-    print(f"   Customer ID: {settings.GOOGLE_ADS_CUSTOMER_ID or '❌ NON CONFIGURATO'}")
+    # Supabase
+    print("SUPABASE (Token Storage)")
+    try:
+        settings.validate_supabase()
+        print(f"   URL: {settings.SUPABASE_URL}")
+        print(f"   Status: OK")
+    except ValueError as e:
+        print(f"   Status: {e}")
+    print()
+    
+    # Google Ads OAuth2
+    print("GOOGLE ADS OAUTH2")
+    print(f"   Developer Token: {'***' + settings.GOOGLE_ADS_DEVELOPER_TOKEN[-10:] if settings.GOOGLE_ADS_DEVELOPER_TOKEN else 'NON CONFIGURATO'}")
+    print(f"   Client ID: {'***' + settings.GOOGLE_ADS_CLIENT_ID[-20:] if settings.GOOGLE_ADS_CLIENT_ID else 'NON CONFIGURATO'}")
+    print(f"   Client Secret: {'***' if settings.GOOGLE_ADS_CLIENT_SECRET else 'NON CONFIGURATO'}")
     
     try:
         settings.validate_google_ads()
-        print(f"   OAuth Credentials: ✅ Configurate")
+        print(f"   OAuth2 Status: OK")
     except ValueError as e:
-        print(f"   OAuth Credentials: ⚠️  {e}")
+        print(f"   OAuth2 Status: {e}")
     print()
     
     # AI Provider
-    print("🤖 AI PROVIDER")
+    print("AI PROVIDER")
     ai_info = settings.get_ai_provider_info()
     print(f"   Provider: {ai_info['name']}")
     print(f"   Model: {ai_info['model']}")
     print(f"   Cost: {ai_info['cost']}")
-    print(f"   Configured: {'✅' if ai_info['configured'] else '❌'}")
+    print(f"   Configured: {'OK' if ai_info['configured'] else 'NO'}")
     
-    # Valida provider
     try:
         settings.validate_ai_provider()
-        print(f"   Status: ✅ OK")
+        print(f"   Status: OK")
     except ValueError as e:
-        print(f"   Status: ❌ {e}")
+        print(f"   Status: {e}")
     print()
     
     # Scheduler
-    print("⏰ SCHEDULER")
+    print("SCHEDULER")
     print(f"   Interval: {settings.MONITOR_INTERVAL_HOURS}h")
-    print(f"   Auto Analyzer: {'✅' if settings.ANALYZER_AUTO_RUN else '❌'}")
+    print(f"   Auto Analyzer: {'SI' if settings.ANALYZER_AUTO_RUN else 'NO'}")
     print()
     
     # Targets
-    print("🎯 TARGETS")
+    print("TARGETS")
     print(f"   CTR min: {settings.TARGET_CTR_MIN}%")
-    print(f"   CPC max: €{settings.TARGET_CPC_MAX}")
+    print(f"   CPC max: EUR{settings.TARGET_CPC_MAX}")
     print(f"   ROAS min: {settings.TARGET_ROAS_MIN}")
     print(f"   Opt. Score min: {settings.TARGET_OPTIMIZATION_SCORE_MIN}")
     print()
     
     # API
-    print("🌐 API SERVER")
+    print("API SERVER")
     print(f"   Host: {settings.API_HOST}")
     print(f"   Port: {settings.API_PORT}")
-    print(f"   Auto-reload: {'✅' if settings.API_RELOAD else '❌'}")
+    print(f"   Auto-reload: {'SI' if settings.API_RELOAD else 'NO'}")
     print()
     
     # Telegram
-    print("📱 TELEGRAM NOTIFICATIONS")
+    print("TELEGRAM NOTIFICATIONS")
     telegram_info = settings.get_telegram_info()
     if telegram_info['enabled']:
-        print(f"   Status: ✅ Abilitato")
+        print(f"   Status: Abilitato")
         print(f"   Bot Token: {settings.TELEGRAM_BOT_TOKEN[:20]}...")
         print(f"   Chat ID: {settings.TELEGRAM_CHAT_ID}")
     else:
-        print(f"   Status: ⚪ Disabilitato (opzionale)")
+        print(f"   Status: Disabilitato (opzionale)")
         if not telegram_info['bot_configured']:
-            print(f"   Bot Token: ❌ Non configurato")
+            print(f"   Bot Token: Non configurato")
         if not telegram_info['chat_configured']:
-            print(f"   Chat ID: ❌ Non configurato")
+            print(f"   Chat ID: Non configurato")
     print()
     
     print("="*60)
     
-    # Warning se mancano configurazioni critiche
-    warnings = []
+    # Check errors
     errors = []
     
-    # Check Google Ads
+    try:
+        settings.validate_supabase()
+    except ValueError as e:
+        errors.append(f"Supabase: {e}")
+    
     try:
         settings.validate_google_ads()
     except ValueError as e:
-        errors.append(f"❌ Google Ads: {e}")
+        errors.append(f"Google Ads: {e}")
     
-    # Check AI Provider
     try:
         settings.validate_ai_provider()
     except ValueError as e:
-        errors.append(f"❌ AI Provider: {e}")
+        errors.append(f"AI Provider: {e}")
     
     if errors:
         print()
-        print("⚠️  ERRORI CRITICI:")
+        print("ERRORI CRITICI:")
         for error in errors:
-            print(f"   {error}")
+            print(f"   - {error}")
         print()
-        print("💡 Configura .env prima di avviare il sistema")
+        print("Configura .env prima di avviare il sistema")
         print()
         exit(1)
     
-    if warnings:
-        print()
-        print("⚠️  ATTENZIONI:")
-        for warning in warnings:
-            print(f"   {warning}")
-        print()
-    
     print()
-    print("✅ Configurazione completa! Sistema pronto.")
+    print("Configurazione completa! Sistema pronto.")
     print()
