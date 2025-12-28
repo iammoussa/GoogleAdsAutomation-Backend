@@ -65,16 +65,25 @@ class CampaignMonitor:
             
             if self.user_id:
                 query = query.eq('user_id', self.user_id)
+
+            print(f"🔍 Loading credentials for user_id: {self.user_id}")
             
             query = query.eq('is_active', True).order('created_at', desc=True).limit(1)
             
             result = query.execute()
+
+            print(f"🔍 Query result: {len(result.data)} accounts found")
             
             if not result.data:
                 raise Exception(f"No active Google Ads account found for user {self.user_id}")
             
             account = result.data[0]
-            
+
+            print(f"🔍 Found account for user: {account.get('user_id')}")
+            print(f"🔍 Customer ID: {account.get('customer_id')}")
+            print(f"🔍 Access token (primi 30): {account.get('access_token')[:30] if account.get('access_token') else 'NULL'}")
+            print(f"🔍 Refresh token (primi 30): {account.get('refresh_token')[:30] if account.get('refresh_token') else 'NULL'}")
+                
             self.access_token = account.get('access_token')
             self.refresh_token = account.get('refresh_token')
             self.customer_id = self.customer_id or account.get('customer_id')
